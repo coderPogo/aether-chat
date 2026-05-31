@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Cyber Shield Outer Frame -->
+    <path
+        android:fillColor="#0C1B20"
+        android:strokeColor="#00FF88"
+        android:strokeWidth="2.5"
+        android:pathData="M 54,18 L 22,30 L 22,56 C 22,76 54,88 54,88 C 54,88 86,76 86,56 L 86,30 Z" />
+
+    <!-- Secure Cyber Lock Shackle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#00F0FF"
+        android:strokeWidth="2"
+        android:pathData="M 46,45 V 39 C 46,34 50,30 54,30 C 58,30 62,34 62,39 V 45" />
+
+    <!-- Secure Cyber Lock Body -->
+    <path
+        android:fillColor="#00FF88"
+        android:pathData="M 40,45 H 68 C 70,45 71,46 71,48 V 64 C 71,66 70,67 68,67 H 40 C 38,67 37,66 37,64 V 48 C 37,46 38,45 40,45 Z" />
+
+    <!-- Lock Keyhole Core -->
+    <path
+        android:fillColor="#030307"
+        android:pathData="M 54,51 C 51.8,51 50,52.8 50,55 C 50,56.5 50.8,57.8 52,58.5 V 63 H 56 V 58.5 C 57.2,57.8 58,56.5 58,55 C 58,52.8 56.2,51 54,51 Z" />
+</vector>

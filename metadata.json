@@ -1,0 +1,6 @@
+{
+  "name": "Aether",
+  "description": "Futuristic decentralized peer-to-peer secure messaging app with end-to-end encryption and ephemeral disappearing messages.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
