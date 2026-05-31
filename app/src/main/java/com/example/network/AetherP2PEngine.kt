@@ -394,17 +394,35 @@ object AetherP2PEngine {
                                             val payload = parts["payload"] ?: ""
                                             val isEphemeral = parts["is_ephemeral"] == "true"
                                             val epSeconds = parts["duration_seconds"]?.toIntOrNull() ?: 10
-                                            val chatId = "global_${sanitizedChannel}_$senderName"
+                                            val recipient = parts["recipient"]
+                                            val ourUsername = repository.getUsername() ?: ""
 
-                                            if (payload.isNotBlank()) {
-                                                _events.emit(P2PEvent.MessageReceived(
-                                                    messageId = msgId,
-                                                    chatId = chatId,
-                                                    senderName = senderName,
-                                                    encryptedPayload = payload,
-                                                    isEphemeral = isEphemeral,
-                                                    ephemeralDurationSeconds = epSeconds
-                                                ))
+                                            if (recipient != null && recipient.isNotBlank()) {
+                                                if (recipient.trim().lowercase() == ourUsername.trim().lowercase()) {
+                                                    val chatId = "global_${sanitizedChannel}_$senderName"
+                                                    if (payload.isNotBlank()) {
+                                                        _events.emit(P2PEvent.MessageReceived(
+                                                            messageId = msgId,
+                                                            chatId = chatId,
+                                                            senderName = senderName,
+                                                            encryptedPayload = payload,
+                                                            isEphemeral = isEphemeral,
+                                                            ephemeralDurationSeconds = epSeconds
+                                                        ))
+                                                    }
+                                                }
+                                            } else {
+                                                val chatId = "global_$sanitizedChannel"
+                                                if (payload.isNotBlank()) {
+                                                    _events.emit(P2PEvent.MessageReceived(
+                                                        messageId = msgId,
+                                                        chatId = chatId,
+                                                        senderName = senderName,
+                                                        encryptedPayload = payload,
+                                                        isEphemeral = isEphemeral,
+                                                        ephemeralDurationSeconds = epSeconds
+                                                    ))
+                                                }
                                             }
                                         }
                                     }
@@ -458,11 +476,13 @@ object AetherP2PEngine {
         isEphemeral: Boolean,
         durationSeconds: Int,
         connectionType: String = "P2P",
-        globalTopic: String? = null
+        globalTopic: String? = null,
+        recipient: String? = null
     ): Boolean {
         if (connectionType == "GLOBAL_INTERNET") {
             val topic = globalTopic ?: return false
-            val frame = "type:chat_message|id:$messageId|sender:$sender|payload:$encryptedPayload|is_ephemeral:$isEphemeral|duration_seconds:$durationSeconds|device_id:$deviceUniqueId"
+            val recipientPart = if (recipient != null && recipient.isNotBlank()) "|recipient:$recipient" else ""
+            val frame = "type:chat_message|id:$messageId|sender:$sender|payload:$encryptedPayload|is_ephemeral:$isEphemeral|duration_seconds:$durationSeconds|device_id:$deviceUniqueId$recipientPart"
             publishToGlobalLobby(topic, frame)
             return true
         }

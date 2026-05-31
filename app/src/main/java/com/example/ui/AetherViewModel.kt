@@ -245,7 +245,8 @@ class AetherViewModel(application: Application) : AndroidViewModel(application) 
                     isEphemeral = isTimerOn,
                     durationSeconds = seconds,
                     connectionType = chat.connectionType,
-                    globalTopic = chat.connectionIp
+                    globalTopic = chat.connectionIp,
+                    recipient = if (chat.peerUsername.startsWith("#")) null else chat.peerUsername
                 )
 
                 if (success) {
@@ -351,6 +352,41 @@ class AetherViewModel(application: Application) : AndroidViewModel(application) 
 
     // Establish link with Remote Peer over Global E2EE Internet Channel
     fun initiateGlobalConnection(channelName: String) {
+        val sanitizedChannel = channelName.trim().lowercase().filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+        if (sanitizedChannel.isEmpty()) return
+
+        val topic = "aether_global_$sanitizedChannel"
+        val chatId = "global_$sanitizedChannel"
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Derive a stable, SHA-256 backed 256-bit AES key so channel communications are E2EE secured by channel name
+                val digest = java.security.MessageDigest.getInstance("SHA-256")
+                val keyBytes = digest.digest(sanitizedChannel.toByteArray(Charsets.UTF_8))
+                val sharedSecretBase64 = Base64.encodeToString(keyBytes, Base64.NO_WRAP)
+
+                val chat = Chat(
+                    id = chatId,
+                    peerUsername = "#$sanitizedChannel",
+                    peerPublicKeyBase64 = "",
+                    ourPrivateKeyBase64 = "",
+                    ourPublicKeyBase64 = "",
+                    sharedSecretBase64 = sharedSecretBase64,
+                    isHost = false,
+                    connectionIp = topic,
+                    connectionPort = 0,
+                    connectionType = "GLOBAL_INTERNET",
+                    isConnected = true,
+                    lastMessageText = "Global secure lobby ready.",
+                    lastMessageTime = System.currentTimeMillis()
+                )
+                repository.insertChat(chat)
+                addDiagnosticLog("Lobby connection for #$sanitizedChannel initialized.")
+            } catch (e: Exception) {
+                Log.e("AetherViewModel", "Failed to insert local channel record", e)
+            }
+        }
+
         AetherP2PEngine.connectToGlobalLobby(channelName, repository, viewModelScope)
     }
 
