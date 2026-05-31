@@ -222,6 +222,17 @@ fun ChatsListScreen(viewModel: AetherViewModel) {
 
     var searchQuery by remember { mutableStateOf("") }
 
+    val activeGlobalChannel = remember(allChats) {
+        allChats.firstOrNull { it.connectionType == "GLOBAL_INTERNET" && it.isConnected }
+            ?.let { chat ->
+                if (chat.connectionIp.startsWith("aether_global_")) {
+                    chat.connectionIp.removePrefix("aether_global_")
+                } else {
+                    chat.connectionIp
+                }
+            }
+    }
+
     val filteredChats = remember(allChats, searchQuery) {
         if (searchQuery.isBlank()) {
             allChats
@@ -278,7 +289,7 @@ fun ChatsListScreen(viewModel: AetherViewModel) {
 
                         Column {
                             Text(
-                                text = "CipherNode",
+                                text = if (activeGlobalChannel != null) "#$activeGlobalChannel" else "CipherNode",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary,
@@ -301,34 +312,6 @@ fun ChatsListScreen(viewModel: AetherViewModel) {
                                     letterSpacing = 0.5.sp
                                 )
                             }
-                        }
-                    }
-
-                    // Network Hub indicator
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.05f))
-                            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                            .clickable { viewModel.navigateTo(Screen.LinkCenter) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Link Hub",
-                                tint = NeonBlue,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = "P2P HUB",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = NeonBlue
-                            )
                         }
                     }
                 }
@@ -390,55 +373,6 @@ fun ChatsListScreen(viewModel: AetherViewModel) {
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("+ CONNECT", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                // Show active global channel name, if any is currently connected
-                val activeGlobalChannel = remember(allChats) {
-                    allChats.firstOrNull { it.connectionType == "GLOBAL_INTERNET" && it.isConnected }
-                        ?.let { chat ->
-                            if (chat.connectionIp.startsWith("aether_global_")) {
-                                chat.connectionIp.removePrefix("aether_global_")
-                            } else {
-                                chat.connectionIp
-                            }
-                        }
-                }
-
-                if (activeGlobalChannel != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(NeonBlue.copy(alpha = 0.1f))
-                            .border(1.dp, NeonBlue.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(NeonBlue)
-                        )
-                        Text(
-                            text = "ACTIVE CHANNEL: #$activeGlobalChannel",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NeonBlue,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 0.5.sp
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = "100% SECURE",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextSecondary,
-                            fontFamily = FontFamily.Monospace
-                        )
                     }
                 }
             }
@@ -744,12 +678,11 @@ fun ChatListItem(
     // 3. Link Center Screen
 @Composable
 fun LinkCenterScreen(viewModel: AetherViewModel) {
-    var selectedTab by remember { mutableStateOf(0) } // 0: Local WiFi P2P, 1: Global Internet Lobby
+    var selectedTab by remember { mutableStateOf(0) } // 0: Global Internet Lobby, 1: Local WiFi P2P
     var targetIp by remember { mutableStateOf("") }
     var targetPort by remember { mutableStateOf("8999") }
     var globalChannelName by remember { mutableStateOf("") }
 
-    val diagnostics by viewModel.p2pDiagnosticLogs.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val localIp = remember { viewModel.getLocalIpAddress() }
 
@@ -810,8 +743,9 @@ fun LinkCenterScreen(viewModel: AetherViewModel) {
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    listOf("LOCAL P2P GRID", "GLOBAL INTERNET LOBBY").forEachIndexed { index, title ->
+                    listOf("GLOBAL INTERNET LOBBY", "LOCAL P2P GRID").forEachIndexed { index, title ->
                         val selected = selectedTab == index
+                        val accentColor = if (index == 0) NeonBlue else NeonGreen
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -819,7 +753,7 @@ fun LinkCenterScreen(viewModel: AetherViewModel) {
                                 .background(if (selected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
                                 .border(
                                     width = 1.dp,
-                                    color = if (selected) NeonGreen.copy(alpha = 0.3f) else Color.Transparent,
+                                    color = if (selected) accentColor.copy(alpha = 0.3f) else Color.Transparent,
                                     shape = RoundedCornerShape(10.dp)
                                 )
                                 .clickable { selectedTab = index }
@@ -830,7 +764,7 @@ fun LinkCenterScreen(viewModel: AetherViewModel) {
                                 text = title,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (selected) NeonGreen else TextSecondary,
+                                color = if (selected) accentColor else TextSecondary,
                                 letterSpacing = 0.5.sp
                             )
                         }
@@ -840,93 +774,6 @@ fun LinkCenterScreen(viewModel: AetherViewModel) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (selectedTab == 0) {
-                    // Local listener card
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = CyberCard),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("LOCAL HOST IP TELEMETRY", fontSize = 11.sp, color = NeonBlue, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "To let a peer connect, share this IP address & Port number. They must type it inside their 'Link Client' inputs.",
-                                fontSize = 12.sp,
-                                color = TextSecondary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("IP Address: $localIp", fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = TextPrimary)
-                                Text("Listening Port: 8999", fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = TextPrimary)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Connect to Client Form
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = CyberCard),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("CONNECT TO REMOTE PEER", fontSize = 11.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = targetIp,
-                                onValueChange = { targetIp = it },
-                                placeholder = { Text("Peer IP: e.g. 192.168.1.10", color = TextSecondary) },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
-                                    focusedBorderColor = NeonGreen,
-                                    unfocusedBorderColor = CyberGray
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = targetPort,
-                                onValueChange = { targetPort = it },
-                                placeholder = { Text("Port (Default: 8999)", color = TextSecondary) },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
-                                    focusedBorderColor = NeonGreen,
-                                    unfocusedBorderColor = CyberGray
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = {
-                                    if (targetIp.isNotBlank()) {
-                                        viewModel.initiateP2PConnection(targetIp.trim(), targetPort.trim())
-                                        viewModel.navigateTo(Screen.ChatsList)
-                                    }
-                                },
-                                enabled = targetIp.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = NeonGreen,
-                                    disabledContainerColor = Color.White.copy(alpha = 0.05f)
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("ESTABLISH PEER TUNNEL", color = Color.Black, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                } else {
                     // Global Internet Channel Mode Card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -1018,73 +865,91 @@ fun LinkCenterScreen(viewModel: AetherViewModel) {
                             }
                         }
                     }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Deploy simulator
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0C101B)),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, NeonPurple.copy(alpha = 0.2f))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                } else {
+                    // Local listener card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = CyberCard),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("SIMULATION MATRIX", fontSize = 11.sp, color = NeonPurple, fontWeight = FontWeight.Bold)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("LOCAL HOST IP TELEMETRY", fontSize = 11.sp, color = NeonBlue, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "No secondary device? Deploy an end-to-end encrypted virtual chatbot companion representing high protocol security.",
-                                fontSize = 11.sp,
+                                text = "To let a peer connect, share this IP address & Port number. They must type it inside their 'Link Client' inputs.",
+                                fontSize = 12.sp,
                                 color = TextSecondary
                             )
-                        }
-                        Button(
-                            onClick = {
-                                viewModel.createVirtualPeerChat("Sybil Q-Bot")
-                                viewModel.navigateTo(Screen.ChatsList)
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonPurple),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("BOOT BOT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("IP Address: $localIp", fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = TextPrimary)
+                                Text("Listening Port: 8999", fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = TextPrimary)
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                // Diagnostic Logs Terminal Window
-                Text("NETWORK QUANTUM DIAGNOSTICS Logs", fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = Color.Black),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, CyberCard)
-                ) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp),
-                        reverseLayout = true
+                    // Connect to Client Form
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = CyberCard),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
                     ) {
-                        items(diagnostics.reversed()) { log ->
-                            Text(
-                                text = log,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                color = if (log.contains("Secure") || log.contains("ONLINE") || log.contains("ready")) NeonGreen else TextSecondary,
-                                modifier = Modifier.padding(vertical = 2.dp)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("CONNECT TO REMOTE PEER", fontSize = 11.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = targetIp,
+                                onValueChange = { targetIp = it },
+                                placeholder = { Text("Peer IP: e.g. 192.168.1.10", color = TextSecondary) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    focusedBorderColor = NeonGreen,
+                                    unfocusedBorderColor = CyberGray
+                                )
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = targetPort,
+                                onValueChange = { targetPort = it },
+                                placeholder = { Text("Port (Default: 8999)", color = TextSecondary) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    focusedBorderColor = NeonGreen,
+                                    unfocusedBorderColor = CyberGray
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = {
+                                    if (targetIp.isNotBlank()) {
+                                        viewModel.initiateP2PConnection(targetIp.trim(), targetPort.trim())
+                                        viewModel.navigateTo(Screen.ChatsList)
+                                    }
+                                },
+                                enabled = targetIp.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonGreen,
+                                    disabledContainerColor = Color.White.copy(alpha = 0.05f)
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("ESTABLISH PEER TUNNEL", color = Color.Black, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
